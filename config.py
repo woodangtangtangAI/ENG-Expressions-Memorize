@@ -20,8 +20,8 @@ DAILY_TARGET = 100
 FUZZY_MATCH_THRESHOLD = 0.85
 
 # API Rate Limiting
-API_CALL_DELAY = 3  # seconds between Gemini API calls
-API_MAX_RETRIES = 3
+API_CALL_DELAY = 10  # seconds between Gemini API calls
+API_MAX_RETRIES = 5
 
 # Source Configuration
 SOURCES = {
