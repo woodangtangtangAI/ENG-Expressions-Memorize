@@ -54,7 +54,7 @@ def main() -> None:
 
     # ── Setup ─────────────────────────────────────────────────────────
     os.makedirs(config.DATA_DIR, exist_ok=True)
-    logger = setup_logger()
+    logger = setup_logger('main')
     start_time = datetime.datetime.now()
 
     logger.info("=" * 60)
