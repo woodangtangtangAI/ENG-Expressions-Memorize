@@ -192,34 +192,49 @@ def process_and_extract(raw_texts: list[dict], index_data: dict, daily_target: i
         logger.warning("No raw texts provided for processing")
         return []
 
-    results = []
-    batch_seen = set()  # Track expressions within this batch to avoid intra-batch duplicates
+    # 1. Group texts by source and bundle them into larger chunks (max 8000 chars)
+    # This massively reduces the number of API calls and avoids "RESOURCE_EXHAUSTED" limits.
+    source_groups = {}
+    for text_data in raw_texts:
+        source = text_data.get('source', 'unknown')
+        text = text_data.get('raw_text', '').strip()
+        if not text: continue
+        
+        if source not in source_groups:
+            source_groups[source] = []
+        source_groups[source].append(text)
 
-    # Calculate per-source target counts
-    total_chunks = len(raw_texts)
-    if total_chunks == 0:
+    bundled_texts = []
+    for source, texts in source_groups.items():
+        current_bundle = ""
+        for t in texts:
+            if len(current_bundle) + len(t) > 8000:
+                if current_bundle.strip():
+                    bundled_texts.append({'source': source, 'text': current_bundle.strip()})
+                current_bundle = t + "\n\n"
+            else:
+                current_bundle += t + "\n\n"
+        if current_bundle.strip():
+            bundled_texts.append({'source': source, 'text': current_bundle.strip()})
+
+    total_bundles = len(bundled_texts)
+    logger.info(f"Bundled {len(raw_texts)} tiny texts into {total_bundles} large bundles to drastically reduce API calls.")
+
+    if total_bundles == 0:
         return []
 
-    # Distribute targets across chunks, with a minimum of 3 per chunk
-    per_chunk_target = max(3, daily_target // total_chunks)
-    logger.info(f"Processing {total_chunks} text chunks, targeting ~{per_chunk_target} expressions per chunk (daily target: {daily_target})")
+    results = []
+    batch_seen = set()
+    per_bundle_target = max(5, daily_target // total_bundles)
 
-    for i, text_data in enumerate(raw_texts):
-        source = text_data.get('source', 'unknown')
-        raw_text = text_data.get('raw_text', '')
+    for i, bundle_data in enumerate(bundled_texts):
+        source = bundle_data['source']
+        bundle_text = bundle_data['text']
 
-        if not raw_text or len(raw_text.strip()) < 50:
-            logger.debug(f"Skipping chunk {i + 1}: text too short ({len(raw_text)} chars)")
-            continue
-
-        # Truncate very long texts to avoid token limits
-        if len(raw_text) > 8000:
-            raw_text = raw_text[:8000]
-
-        logger.info(f"Processing chunk {i + 1}/{total_chunks} from source: {source} ({len(raw_text)} chars)")
+        logger.info(f"Processing bundle {i + 1}/{total_bundles} from source: {source} ({len(bundle_text)} chars)")
 
         # Build prompt and call Gemini
-        prompt = _build_extraction_prompt(raw_text, per_chunk_target, source)
+        prompt = _build_extraction_prompt(bundle_text, per_bundle_target, source)
         extracted = _call_gemini(prompt)
 
         # Validate, deduplicate, and collect results
@@ -228,7 +243,6 @@ def process_and_extract(raw_texts: list[dict], index_data: dict, daily_target: i
         invalid_count = 0
 
         for expr in extracted:
-            # Validate
             if not _validate_expression(expr):
                 invalid_count += 1
                 continue
@@ -236,49 +250,31 @@ def process_and_extract(raw_texts: list[dict], index_data: dict, daily_target: i
             expression_text = str(expr['expression']).strip()
             normalized = normalize_expression(expression_text)
 
-            # Check for intra-batch duplicates
-            if normalized in batch_seen:
+            if normalized in batch_seen or is_duplicate(normalized, index_data):
                 dup_count += 1
-                logger.debug(f"Intra-batch duplicate: '{expression_text}'")
                 continue
 
-            # Check against existing index
-            if is_duplicate(normalized, index_data):
-                dup_count += 1
-                logger.debug(f"Index duplicate: '{expression_text}'")
-                continue
-
-            # Add source info and collect
             expr['source'] = source
             results.append(expr)
             batch_seen.add(normalized)
             valid_count += 1
 
         logger.info(
-            f"Chunk {i + 1} results: {valid_count} valid, {dup_count} duplicates, "
+            f"Bundle {i + 1} results: {valid_count} valid, {dup_count} duplicates, "
             f"{invalid_count} invalid (out of {len(extracted)} extracted)"
         )
 
-        # Don't process more chunks if we've already hit the target
         if len(results) >= daily_target:
-            logger.info(f"Reached daily target ({daily_target}) after {i + 1} chunks")
+            logger.info(f"Reached daily target ({daily_target}) after {i + 1} bundles")
             break
 
-        # Polite delay between API calls
-        if i < total_chunks - 1:
+        if i < total_bundles - 1:
             time.sleep(config.API_CALL_DELAY)
 
-    # Check if we reached the target
-    if len(results) < daily_target:
-        logger.warning(
-            f"Shortfall: extracted {len(results)} expressions, target was {daily_target}. "
-            f"Consider adding more sources or increasing per-chunk targets."
-        )
-
-    # Trim to daily target if we exceeded it
     if len(results) > daily_target:
         logger.info(f"Trimming results from {len(results)} to daily target of {daily_target}")
         results = results[:daily_target]
 
     logger.info(f"Processing complete. Final count: {len(results)} expressions")
     return results
+
