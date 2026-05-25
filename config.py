@@ -54,4 +54,3 @@ SOURCES = {
         "type": "transcript"
     }
 }
-}
