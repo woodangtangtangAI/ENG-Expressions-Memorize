@@ -20,7 +20,7 @@ DAILY_TARGET = 100
 FUZZY_MATCH_THRESHOLD = 0.85
 
 # Gemini API Configuration
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-2.0-flash"
 API_CALL_DELAY = 10  # seconds between Gemini API calls
 API_MAX_RETRIES = 3
 
