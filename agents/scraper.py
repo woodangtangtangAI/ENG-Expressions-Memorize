@@ -164,83 +164,75 @@ def _scrape_article_content(url: str) -> str:
 
 def _scrape_friends_transcript(base_url: str, used_episodes: list) -> list[dict]:
     """
-    Scrape Friends TV show transcripts from transcripts.foreverdreaming.org.
-    Selects random unused episodes and extracts transcript text.
-
-    Args:
-        base_url: The forum index page URL for Friends transcripts.
-        used_episodes: List of already-used episode URLs to avoid.
-
-    Returns:
-        List of dicts with keys: source, raw_text, url
+    Selects a random Friends episode directly from fangj.github.io,
+    downloads it, extracts transcript, and slices it to a lightweight size.
     """
     results = []
-    new_episode_urls = []
+    
+    seasons = {
+        1: 24, 2: 24, 3: 25, 4: 24, 5: 24,
+        6: 25, 7: 24, 8: 24, 9: 24, 10: 18
+    }
+
+    # Attempt to find an unused random episode
+    selected_url = None
+    selected_title = None
+    
+    for _ in range(20):  # Try 20 times to find an unused episode
+        season = random.choice(list(seasons.keys()))
+        episode = random.randint(1, seasons[season])
+        filename = f"{season:02d}{episode:02d}.html"
+        url = f"https://fangj.github.io/friends/season/{filename}"
+        
+        if url not in used_episodes:
+            selected_url = url
+            selected_title = f"Friends Season {season} Episode {episode}"
+            break
+            
+    if not selected_url:
+        logger.warning("Could not find an unused Friends episode in random selection")
+        return results
 
     try:
-        response = _fetch_with_retry(base_url)
-        if not response:
-            logger.warning("Failed to fetch Friends transcript index page")
-            return results
+        logger.info(f"Fetching Friends transcript directly: {selected_title}")
+        response = _fetch_with_retry(selected_url)
+        if response:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Extract plain text from all paragraphs and table elements, or directly body text
+            paragraphs = soup.find_all('p')
+            lines = []
+            for p in paragraphs:
+                txt = p.get_text(separator=' ', strip=True)
+                if txt:
+                    lines.append(txt)
+                    
+            if not lines:
+                # Fallback to direct text splitting if no <p> tags
+                text_content = soup.get_text(separator='\n')
+                lines = [line.strip() for line in text_content.split('\n') if line.strip()]
 
-        soup = BeautifulSoup(response.text, 'html.parser')
+            if lines:
+                # Slice the transcript to make it lightweight
+                # Take a chunk of 70 lines (approx. 2000-3000 chars)
+                if len(lines) > 80:
+                    start_idx = random.randint(0, len(lines) - 70)
+                    sliced_lines = lines[start_idx : start_idx + 70]
+                    sliced_text = "\n".join(sliced_lines)
+                else:
+                    sliced_text = "\n".join(lines)
 
-        # Find episode thread links
-        episode_links = []
-        for a_tag in soup.find_all('a', href=True):
-            href = a_tag['href']
-            if 'viewtopic' in href:
-                full_url = href if href.startswith('http') else f"https://transcripts.foreverdreaming.org{href}"
-                # Normalize URL for comparison
-                if full_url not in used_episodes:
-                    episode_links.append({
-                        'url': full_url,
-                        'title': a_tag.get_text(strip=True)
-                    })
-
-        if not episode_links:
-            logger.warning("No new Friends episodes found to scrape")
-            return results
-
-        # Randomly select 3-5 episodes
-        num_to_select = min(random.randint(3, 5), len(episode_links))
-        selected_episodes = random.sample(episode_links, num_to_select)
-
-        for episode in selected_episodes:
-            try:
-                logger.info(f"Scraping Friends episode: {episode['title']}")
-                ep_response = _fetch_with_retry(episode['url'])
-                if not ep_response:
-                    continue
-
-                ep_soup = BeautifulSoup(ep_response.text, 'html.parser')
-
-                # Extract transcript text
-                transcript_text = ''
-                for selector in ['div.postbody', 'div.content']:
-                    content_div = ep_soup.select_one(selector)
-                    if content_div:
-                        transcript_text = content_div.get_text(separator='\n', strip=True)
-                        break
-
-                if transcript_text:
-                    results.append({
-                        'source': 'Friends',
-                        'raw_text': transcript_text,
-                        'url': episode['url']
-                    })
-                    new_episode_urls.append(episode['url'])
-                    logger.info(f"Successfully scraped transcript from: {episode['title']}")
-
-                # Polite delay
-                time.sleep(random.uniform(1.0, 2.0))
-
-            except Exception as e:
-                logger.warning(f"Failed to scrape episode {episode['url']}: {e}")
-                continue
+                results.append({
+                    'source': 'Friends',
+                    'raw_text': sliced_text,
+                    'url': selected_url
+                })
+                logger.info(f"Successfully fetched Friends transcript snippet ({len(sliced_text)} chars) from {selected_url}")
+            else:
+                logger.warning(f"No transcript lines found in page: {selected_url}")
 
     except Exception as e:
-        logger.warning(f"Failed to scrape Friends transcripts: {e}")
+        logger.warning(f"Failed to fetch transcript from {selected_url}: {e}")
 
     return results
 
@@ -248,20 +240,7 @@ def _scrape_friends_transcript(base_url: str, used_episodes: list) -> list[dict]
 def scrape_all_sources(sources_config: dict, used_episodes: list) -> tuple[list[dict], list[str]]:
     """
     Main entry point for scraping all configured sources.
-    Orchestrates RSS fetching, article scraping, and transcript scraping.
-
-    Args:
-        sources_config: Dict of source configurations. Each source has:
-            - name: str
-            - type: 'news', 'business', or 'transcript'
-            - rss_urls: list[str] (for news/business)
-            - base_url: str (for transcript)
-        used_episodes: List of already-used episode URLs.
-
-    Returns:
-        Tuple of (text_chunks, new_used_episode_urls)
-        - text_chunks: List of {"source": str, "raw_text": str, "url": str}
-        - new_used_episode_urls: List of newly scraped episode URLs
+    Lightweight version: uses only RSS title/description and sliced transcripts.
     """
     text_chunks = []
     new_used_episode_urls = []
@@ -270,7 +249,7 @@ def scrape_all_sources(sources_config: dict, used_episodes: list) -> tuple[list[
         source_name = source_cfg.get('name', source_key)
         source_type = source_cfg.get('type', '')
 
-        logger.info(f"Processing source: {source_name} (type: {source_type})")
+        logger.info(f"Processing source (lightweight mode): {source_name} (type: {source_type})")
 
         try:
             if source_type in ('news', 'business'):
@@ -280,23 +259,24 @@ def scrape_all_sources(sources_config: dict, used_episodes: list) -> tuple[list[
                     continue
 
                 articles = _fetch_rss_articles(rss_urls)
-                logger.info(f"Fetched {len(articles)} articles from {source_name}")
-
-                for article in articles:
-                    # Try to scrape full article content
-                    full_text = ''
-                    if article.get('url'):
-                        full_text = _scrape_article_content(article['url'])
-
-                    # Fallback to RSS description if full scrape fails
-                    raw_text = full_text if full_text else article.get('description', '')
-
-                    if raw_text:
-                        text_chunks.append({
-                            'source': source_name,
-                            'raw_text': raw_text,
-                            'url': article.get('url', '')
-                        })
+                
+                # Combine titles and summaries of the top 10 articles into a single text block
+                combined_rss_text = ""
+                limit_articles = articles[:10]  # Get top 10 articles
+                
+                for article in limit_articles:
+                    title = article.get('title', '').strip()
+                    desc = article.get('description', '').strip()
+                    if title or desc:
+                        combined_rss_text += f"- Title: {title}\nSummary: {desc}\n\n"
+                
+                if combined_rss_text:
+                    text_chunks.append({
+                        'source': source_name,
+                        'raw_text': combined_rss_text,
+                        'url': rss_urls[0]
+                    })
+                    logger.info(f"Combined {len(limit_articles)} RSS summaries for {source_name} ({len(combined_rss_text)} chars)")
 
             elif source_type == 'transcript':
                 base_url = source_cfg.get('base_url', '')
@@ -307,7 +287,6 @@ def scrape_all_sources(sources_config: dict, used_episodes: list) -> tuple[list[
                 transcript_chunks = _scrape_friends_transcript(base_url, used_episodes)
                 text_chunks.extend(transcript_chunks)
 
-                # Collect new episode URLs
                 for chunk in transcript_chunks:
                     if chunk.get('url'):
                         new_used_episode_urls.append(chunk['url'])
@@ -319,5 +298,6 @@ def scrape_all_sources(sources_config: dict, used_episodes: list) -> tuple[list[
             logger.warning(f"Source '{source_name}' completely failed: {e}. Continuing with other sources.")
             continue
 
-    logger.info(f"Scraping complete. Total text chunks: {len(text_chunks)}, New episodes: {len(new_used_episode_urls)}")
+    logger.info(f"Lightweight scraping complete. Total text chunks: {len(text_chunks)}, New episodes: {len(new_used_episode_urls)}")
     return text_chunks, new_used_episode_urls
+
