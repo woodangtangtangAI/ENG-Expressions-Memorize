@@ -107,64 +107,142 @@ def _save_daily_excel(rows: list[list], headers: list[str], date_str: str) -> No
         raise
 
 
-def _save_markdown_note(expressions: list[dict], date_str: str) -> None:
-    """Save daily expressions to a beautifully formatted markdown note (03_Print_PDF/Study_Note_YYYY-MM-DD.md)."""
+def _save_word_note(expressions: list[dict], date_str: str) -> None:
+    """Save daily expressions to a Word (.docx) document with card-style layout.
+    Each expression is a self-contained card: headword + pronunciation + meaning + context + example.
+    No tables, no pipe characters.
+    """
+    from docx import Document
+    from docx.shared import Pt, RGBColor, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
     os.makedirs(config.PRINT_DIR, exist_ok=True)
-    file_path = os.path.join(config.PRINT_DIR, f"Study_Note_{date_str}.md")
+    file_path = os.path.join(config.PRINT_DIR, f"Study_Note_{date_str}.docx")
 
     try:
-        # Build Table rows
-        table_rows_str = ""
+        doc = Document()
+
+        # ── 페이지 여백 설정 (좌우 2cm, 상하 1.8cm) ─────────────────────────
+        section = doc.sections[0]
+        section.top_margin    = Cm(1.8)
+        section.bottom_margin = Cm(1.8)
+        section.left_margin   = Cm(2.0)
+        section.right_margin  = Cm(2.0)
+
+        # ── 기본 폰트 설정 헬퍼 ──────────────────────────────────────────────
+        def _set_font(run, name="맑은 고딕", size=11, bold=False, italic=False, color=None):
+            run.font.name = name
+            run.font.size = Pt(size)
+            run.font.bold = bold
+            run.font.italic = italic
+            if color:
+                run.font.color.rgb = RGBColor(*color)
+            # 한글 폰트도 같이 지정
+            r = run._r
+            rPr = r.get_or_add_rPr()
+            rFonts = OxmlElement('w:rFonts')
+            rFonts.set(qn('w:eastAsia'), name)
+            rPr.append(rFonts)
+
+        def _para(text="", align=WD_ALIGN_PARAGRAPH.LEFT, space_before=0, space_after=4):
+            p = doc.add_paragraph()
+            p.alignment = align
+            p.paragraph_format.space_before = Pt(space_before)
+            p.paragraph_format.space_after  = Pt(space_after)
+            if text:
+                p.add_run(text)
+            return p
+
+        # ── 타이틀 ───────────────────────────────────────────────────────────
+        title_p = doc.add_paragraph()
+        title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title_p.paragraph_format.space_before = Pt(0)
+        title_p.paragraph_format.space_after  = Pt(6)
+        title_r = title_p.add_run(f"📝 Daily English Study Note  |  {date_str}")
+        _set_font(title_r, size=15, bold=True, color=(30, 100, 200))
+
+        sub_p = doc.add_paragraph()
+        sub_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        sub_p.paragraph_format.space_before = Pt(0)
+        sub_p.paragraph_format.space_after  = Pt(14)
+        sub_r = sub_p.add_run(f"오늘의 핵심 네이티브 표현  {len(expressions)}개  ·  발음 기호 · 의미 · 원문 · 실전 예문 수록")
+        _set_font(sub_r, size=9, italic=True, color=(100, 100, 100))
+
+        # ── 표현 카드 반복 ────────────────────────────────────────────────────
         for i, expr in enumerate(expressions, 1):
-            uid = expr.get('uid', 'ENG-000')
             expression = expr.get('expression', '')
-            pos = expr.get('pos', '')
-            meaning = expr.get('meaning_kr', '')
-            table_rows_str += f"| {i:03d} | **{expression}** | `{pos}` | {meaning} |\n"
+            pos        = expr.get('pos', '').upper()
+            ipa        = expr.get('ipa', '')
+            meaning    = expr.get('meaning_kr', '')
+            orig_txt   = expr.get('original_text', '')
+            appl_ex    = expr.get('applied_example', '')
+            source     = expr.get('source', '')
 
-        # Build detailed section
-        details_str = ""
-        for i, expr in enumerate(expressions, 1):
-            expression = expr.get('expression', '')
-            pos = expr.get('pos', '')
-            ipa = expr.get('ipa', '')
-            meaning = expr.get('meaning_kr', '')
-            orig_txt = expr.get('original_text', '')
-            appl_ex = expr.get('applied_example', '')
-            source = expr.get('source', 'Inspiration')
+            # 카드 번호 + 표제어 + 품사
+            head_p = doc.add_paragraph()
+            head_p.paragraph_format.space_before = Pt(10)
+            head_p.paragraph_format.space_after  = Pt(2)
 
-            details_str += f"### {i}. **{expression}** `[{pos}]` ` {ipa} `\n"
-            details_str += f"*   **의미**: {meaning}\n"
-            details_str += f"*   **원문 Context**: *\"{orig_txt}\"* (출처: `{source}`)\n"
-            details_str += f"*   **실전 예문 (Applied Example)**:\n"
-            details_str += f"    > **{appl_ex}**\n\n"
-            details_str += "---\n\n"
+            num_r = head_p.add_run(f"{i:03d}.  ")
+            _set_font(num_r, size=10, bold=False, color=(150, 150, 150))
 
-        # Assemble markdown contents
-        markdown_content = f"""# 📝 Daily English Native Expressions Study Note ({date_str})
+            expr_r = head_p.add_run(expression)
+            _set_font(expr_r, name="Calibri", size=14, bold=True, color=(20, 60, 180))
 
-오늘 학습할 핵심 영어 표현 **{len(expressions)}개**입니다. 
-눈으로 소리 내어 읽고, 아래 발음 기호와 예문을 보며 내 손으로 직접 뜻과 쓰임새를 익혀보세요!
+            pos_r = head_p.add_run(f"   [{pos}]")
+            _set_font(pos_r, name="Calibri", size=9, bold=False, color=(120, 120, 120))
 
----
+            # 발음 기호
+            ipa_p = doc.add_paragraph()
+            ipa_p.paragraph_format.space_before = Pt(0)
+            ipa_p.paragraph_format.space_after  = Pt(2)
+            ipa_label = ipa_p.add_run("🔊 ")
+            _set_font(ipa_label, size=10)
+            ipa_r = ipa_p.add_run(ipa)
+            _set_font(ipa_r, name="Calibri", size=10, italic=True, color=(80, 80, 80))
 
-## 📂 학습 표현 목록
-| 번호 | 표현 (Expression) | 품사 (POS) | 의미 (Meaning) |
-| :---: | :--- | :--- | :--- |
-{table_rows_str}
----
+            # 한국어 의미
+            mean_p = doc.add_paragraph()
+            mean_p.paragraph_format.space_before = Pt(0)
+            mean_p.paragraph_format.space_after  = Pt(3)
+            mean_label = mean_p.add_run("💡 의미  ")
+            _set_font(mean_label, size=10, bold=True, color=(40, 40, 40))
+            mean_r = mean_p.add_run(meaning)
+            _set_font(mean_r, size=10.5)
 
-## 🔍 세부 표현 및 실전 예문 학습
+            # 원문 Context
+            orig_p = doc.add_paragraph()
+            orig_p.paragraph_format.space_before = Pt(0)
+            orig_p.paragraph_format.space_after  = Pt(2)
+            orig_label = orig_p.add_run("📌 원문  ")
+            _set_font(orig_label, size=9.5, bold=True, color=(100, 100, 100))
+            orig_r = orig_p.add_run(f'"{orig_txt}"')
+            _set_font(orig_r, name="Calibri", size=9.5, italic=True, color=(90, 90, 90))
 
-{details_str}"""
+            # 실전 예문
+            ex_p = doc.add_paragraph()
+            ex_p.paragraph_format.space_before = Pt(2)
+            ex_p.paragraph_format.space_after  = Pt(2)
+            ex_label = ex_p.add_run("✏️ 예문  ")
+            _set_font(ex_label, size=10, bold=True, color=(0, 120, 80))
+            ex_r = ex_p.add_run(appl_ex)
+            _set_font(ex_r, name="Calibri", size=10.5, bold=True, color=(0, 100, 60))
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(markdown_content)
+            # 구분선 (마지막 카드 제외)
+            if i < len(expressions):
+                sep_p = doc.add_paragraph()
+                sep_p.paragraph_format.space_before = Pt(6)
+                sep_p.paragraph_format.space_after  = Pt(0)
+                sep_r = sep_p.add_run("─" * 60)
+                _set_font(sep_r, size=7, color=(200, 200, 200))
 
-        logger.info(f"Saved daily study markdown note: {file_path}")
+        doc.save(file_path)
+        logger.info(f"Saved daily study Word note: {file_path}")
 
     except Exception as e:
-        logger.error(f"Failed to save daily markdown note: {e}")
+        logger.error(f"Failed to save daily Word note: {e}")
         raise
 
 
@@ -189,7 +267,7 @@ def save_expressions(expressions: list[dict], index_data: dict) -> int:
     # 3. Save daily-only Excel sheet (new file)
     _save_daily_excel(rows, HEADERS, date_str)
 
-    # 4. Save daily markdown study note (new file)
-    _save_markdown_note(expressions, date_str)
+    # 4. Save daily Word study note (new file)
+    _save_word_note(expressions, date_str)
 
     return saved_count
