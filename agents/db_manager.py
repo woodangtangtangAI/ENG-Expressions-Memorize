@@ -54,7 +54,8 @@ def _prepare_rows(expressions: list[dict], date_str: str, index_data: dict) -> l
     rows = []
 
     for expr in expressions:
-        uid = get_next_uid(date_str, index_data)
+        seq_num = get_next_uid(index_data, date_str)
+        uid = _generate_uid(date_str, seq_num)
 
         row = [
             uid,
