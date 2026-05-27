@@ -143,7 +143,7 @@ def main() -> None:
             index_data["used_episodes"] = existing_episodes
 
         index_data["last_updated"] = datetime.date.today().isoformat()
-        save_index(index_data, config.INDEX_FILE)
+        save_index(config.INDEX_FILE, index_data)
 
         updated_count = get_total_count(index_data)
         logger.info(
