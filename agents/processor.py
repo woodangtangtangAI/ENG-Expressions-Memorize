@@ -104,6 +104,12 @@ def _call_gemini(prompt: str) -> list[dict]:
 
     client = genai.Client(api_key=config.GEMINI_API_KEY)
 
+    try:
+        available_models = [m.name for m in client.models.list()]
+        logger.info(f"Available models for this API key: {available_models}")
+    except Exception as list_err:
+        logger.warning(f"Failed to list models: {list_err}")
+
     for model_name in models_to_try:
         logger.info(f"Attempting API call with model: {model_name}...")
         for attempt in range(config.API_MAX_RETRIES):
