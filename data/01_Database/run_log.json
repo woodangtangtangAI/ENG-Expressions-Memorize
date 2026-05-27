@@ -19,5 +19,12 @@
     "total_count": 261,
     "sources_scraped": 4,
     "status": "success"
+  },
+  {
+    "date": "2026-05-27",
+    "expressions_added": 100,
+    "total_count": 361,
+    "sources_scraped": 4,
+    "status": "success"
   }
 ]
