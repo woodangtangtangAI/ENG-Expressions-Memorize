@@ -6,11 +6,18 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 # Paths
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(PROJECT_DIR, "data")
-INDEX_FILE = os.path.join(DATA_DIR, "expressions_index.json")
-RUN_LOG_FILE = os.path.join(DATA_DIR, "run_log.json")
 
-# Excel Database File
-EXCEL_FILENAME = os.path.join(DATA_DIR, "english_expressions_db.xlsx")
+# Structured Folders
+DB_DIR = os.path.join(DATA_DIR, "01_Database")
+DAILY_DIR = os.path.join(DATA_DIR, "02_Daily_Sheets")
+PRINT_DIR = os.path.join(DATA_DIR, "03_Print_PDF")
+
+INDEX_FILE = os.path.join(DB_DIR, "expressions_index.json")
+RUN_LOG_FILE = os.path.join(DB_DIR, "run_log.json")
+EXCEL_FILENAME = os.path.join(DB_DIR, "english_expressions_db.xlsx")
+
+# Local Drive study path
+LOCAL_STUDY_PATH = r"G:\내 드라이브\[언어 공부]\1. 영어 암기"
 
 # Targets
 MAX_EXPRESSIONS = 2000

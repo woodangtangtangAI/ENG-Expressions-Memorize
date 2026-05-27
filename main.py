@@ -54,7 +54,10 @@ def main() -> None:
 
     # ── Setup ─────────────────────────────────────────────────────────
     os.makedirs(config.DATA_DIR, exist_ok=True)
-    logger = setup_logger('main')
+    os.makedirs(config.DB_DIR, exist_ok=True)
+    os.makedirs(config.DAILY_DIR, exist_ok=True)
+    os.makedirs(config.PRINT_DIR, exist_ok=True)
+    logger = setup_logger()
     start_time = datetime.datetime.now()
 
     logger.info("=" * 60)

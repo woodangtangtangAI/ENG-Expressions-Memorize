@@ -13,30 +13,31 @@ VALID_POS_TYPES = {'phrasal verb', 'collocation', 'idiom'}
 
 
 def _build_extraction_prompt(text_chunk: str, target_count: int) -> str:
-    prompt = f"""당신은 비원어민 직장인을 위한 영어 네이티브 표현 전문가입니다.
+    prompt = f"""당신은 한국인을 위한 영어 네이티브 표현 교육 전문가입니다.
 
-아래 영어 텍스트에서 비원어민이 실전에서 반드시 알아야 할 실전 영어 표현을 정확히 {target_count}개 추출하세요.
-각 표현이 원래 속해 있던 텍스트의 SOURCE(예: CNBC, BBC_Business, HBR, Friends)를 파악하여 결과의 "source" 필드에 정확히 기록해 주세요.
+아래 제공된 [텍스트]를 참고하여, 비원어민이 미드, 일상 대화, 비즈니스 환경에서 반드시 알아야 할 실용적이고 세련된 영어 표현을 정확히 {target_count}개 생성 및 추출해 주세요.
+텍스트에 쓰인 어휘나 맥락에서 아이디어를 얻되, 단순한 직역 단어가 아닌 실제 네이티브들이 입에 달고 사는 유용한 표현들로 업그레이드하여 엄선하세요.
 
 [대상 표현 유형]
-1. Phrasal Verbs (구동사): 예) pull off, bring up, figure out, iron out
-2. Business Collocations (비즈니스 연어): 예) raise concerns, drive growth, meet expectations
-3. Daily Idioms (일상 관용구): 예) a piece of cake, break the ice, hit the nail on the head
+1. Phrasal Verbs (구동사): 예) pull off, bring up, figure out, run into, put up with
+2. Daily/Business Collocations (실전 연어): 예) make a difference, raise concerns, catch someone's eye, keep in loop
+3. Daily Idioms & Colloquial Phrases (일상 관용구 및 구어체): 예) call it a day, hit the nail on the head, read between the lines, speak of the devil
 
-[추출 규칙]
-- go, make, have, get, take 등 기초 단어 단독 사용은 절대 제외
-- 중급~고급 학습자에게 실질적으로 유용한 표현만 선별
-- 원문 문장에 등장하는 SOURCE 정보를 정확하게 매칭하여 "source" 필드에 기록
-- JSON 배열 형식으로만 응답하세요:
+[중요 추출 및 생성 규칙]
+- **동사원형(기본형) 규칙**: `expression` 필드에는 시제(과거형, 분사형 등)나 3인칭 단수형(-s)을 모두 제거하고, 반드시 **원형(동사원형/기본형, e.g., 'keep secret', 'double down on')**으로만 표기하세요.
+- **교과서 외 실전 표현**: 한국 교과서나 수능 시험에서 외우는 평이한 단어 단독 사용은 배제하고, 실생활 및 미드(드라마/영화)에서 자주 쓰이지만 한국인들이 놓치기 쉬운 표현들을 선별하세요.
+- **출처(Source) 매핑**: 텍스트 소스에 매칭되는 경우 해당 소스명(예: CNBC, BBC_Business, Friends 등)을 기록하되, 생성 및 기여의 원천이 되는 소스를 적어주세요.
+
+반드시 아래 JSON 배열 형식으로만 응답하세요. 백틱(`) 기호나 markdown json 블록을 쓰지 말고 순수한 JSON 텍스트로만 응답하세요:
 [
   {{
-    "expression": "표현",
+    "expression": "기본형(동사원형) 형태의 영어 표현",
     "pos": "phrasal verb / collocation / idiom",
-    "ipa": "/IPA 발음/",
-    "meaning_kr": "자연스러운 한국어 의미",
-    "original_text": "이 표현이 사용된 원문 문장",
-    "applied_example": "새로운 맥락의 예문",
-    "source": "원문 텍스트의 SOURCE 명칭"
+    "ipa": "/정확한 IPA 발음 기호/",
+    "meaning_kr": "한국어로 번역된 실제 맥락에서의 자연스러운 의미 (사전적 직역 금지)",
+    "original_text": "원문 텍스트에 나타난 표현 혹은 원문의 영감을 받아 자연스럽게 재구성한 미드/대화 속 문장",
+    "applied_example": "이 표현을 일상 대화나 비즈니스에서 바로 사용할 수 있는 새로운 실전 예문",
+    "source": "CNBC / BBC_Business / HBR / Friends 중 연관된 출처 명칭"
   }}
 ]
 
@@ -47,33 +48,33 @@ def _build_extraction_prompt(text_chunk: str, target_count: int) -> str:
 
 def _build_backfill_prompt(text_chunk: str, target_count: int, avoid_expressions: list[str]) -> str:
     avoid_str = ", ".join(avoid_expressions[:50])
-    prompt = f"""당신은 비원어민 직장인을 위한 영어 네이티브 표현 전문가입니다.
+    prompt = f"""당신은 한국인을 위한 영어 네이티브 표현 교육 전문가입니다.
 
-아래 영어 텍스트에서 비원어민이 실전에서 알아야 할 실전 영어 표현을 추가로 {target_count}개 더 추출하세요.
+아래 영어 텍스트를 기반으로, 비원어민이 실전에서 꼭 알아야 할 실전 영어 표현을 추가로 {target_count}개 더 생성 및 추출하세요.
 단, 아래 기존에 추출된 표현들은 중복되므로 **절대 제외**하고 새로운 표현들로만 추출해야 합니다.
-각 표현이 원래 속해 있던 텍스트의 SOURCE(예: CNBC, BBC_Business, HBR, Friends)를 파악하여 결과의 "source" 필드에 정확히 기록해 주세요.
 
 [제외할 기존 표현 목록]
 {avoid_str}
 
 [대상 표현 유형]
 1. Phrasal Verbs (구동사): 예) pull off, bring up
-2. Business Collocations (비즈니스 연어): 예) raise concerns
-3. Daily Idioms (일상 관용구): 예) a piece of cake
+2. Daily/Business Collocations (실전 연어): 예) raise concerns, make a difference
+3. Daily Idioms & Colloquial Phrases (일상 관용구 및 구어체): 예) call it a day, speak of the devil
 
-[추출 규칙]
-- go, make, have, get, take 등 기초 단어 단독 사용은 절대 제외
-- 중급~고급 학습자에게 유용한 표현만 선별
-- 원문 문장에 등장하는 SOURCE 정보를 정확하게 매칭하여 "source" 필드에 기록
-- JSON 배열 형식으로만 응답하세요:
+[중요 추출 및 생성 규칙]
+- **동사원형(기본형) 규칙**: `expression` 필드에는 반드시 시제를 제외한 **원형(동사원형/기본형, e.g., 'keep secret', 'double down on')**으로만 표기하세요.
+- **교과서 외 실전 표현**: 교과서용 기초 단어를 피하고, 실제 생활이나 미드 대화에서 자주 쓰이는 유용한 표현을 선별하세요.
+- **출처(Source) 매핑**: CNBC / BBC_Business / HBR / Friends 중 연관된 출처 명칭을 정확히 기입하세요.
+
+반드시 아래 JSON 배열 형식으로만 응답하세요. 백틱 기호나 markdown 블록을 쓰지 마세요:
 [
   {{
-    "expression": "표현",
+    "expression": "기본형(동사원형) 형태의 영어 표현",
     "pos": "phrasal verb / collocation / idiom",
-    "ipa": "/IPA 발음/",
+    "ipa": "/정확한 IPA 발음 기호/",
     "meaning_kr": "한국어 의미",
-    "original_text": "원문 문장",
-    "applied_example": "새로운 예문",
+    "original_text": "원문 문장 또는 원문을 기반으로 재구성한 구어체 문장",
+    "applied_example": "새로운 맥락의 실전 예문",
     "source": "원문 텍스트의 SOURCE 명칭"
   }}
 ]
