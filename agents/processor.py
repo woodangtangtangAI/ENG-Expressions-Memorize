@@ -13,29 +13,36 @@ VALID_POS_TYPES = {'phrasal verb', 'collocation', 'idiom'}
 
 
 def _build_extraction_prompt(text_chunk: str, target_count: int) -> str:
-    prompt = f"""당신은 한국인을 위한 영어 네이티브 표현 교육 전문가입니다.
+    prompt = f"""당신은 한국인을 위한 영어 네이티브 표현 교육 전문가이자 최고의 큐레이터입니다.
 
-아래 제공된 [텍스트]를 참고하여, 비원어민이 미드, 일상 대화, 비즈니스 환경에서 반드시 알아야 할 실용적이고 세련된 영어 표현을 정확히 {target_count}개 생성 및 추출해 주세요.
-텍스트에 쓰인 어휘나 맥락에서 아이디어를 얻되, 단순한 직역 단어가 아닌 실제 네이티브들이 입에 달고 사는 유용한 표현들로 업그레이드하여 엄선하세요.
+제시된 [텍스트]는 표현 추출을 위한 주제적 영감(Inspiration)과 소재를 제공하는 참고 자료입니다. 텍스트에 등장하는 단어에만 기계적으로 얽매이지 마세요.
+당신의 방대한 원어민 구어체, 미국 드라마(Friends, Modern Family 등), 토크쇼, 일상 회화, 글로벌 비즈니스 환경에 대한 지식베이스를 적극 활용하여, 한국인이 일반 영어 교재나 시험(수능 등)에서는 배우기 어렵지만 실생활에서 네이티브들이 입에 달고 사는 **진짜 알맹이 표현(구동사, 실전 연어, 핵심 관용구)**을 정확히 {target_count}개 엄선하여 생성해 주세요.
 
 [대상 표현 유형]
-1. Phrasal Verbs (구동사): 예) pull off, bring up, figure out, run into, put up with
-2. Daily/Business Collocations (실전 연어): 예) make a difference, raise concerns, catch someone's eye, keep in loop
-3. Daily Idioms & Colloquial Phrases (일상 관용구 및 구어체): 예) call it a day, hit the nail on the head, read between the lines, speak of the devil
+1. Phrasal Verbs (구동사): 예) double down on, pull off, pencil in, fend off, run into, wear off
+2. Daily/Business Collocations (실전 연어): 예) touch base, circle back, hit a snag, drive a hard bargain, take the hit, call the shots
+3. Daily Idioms & Colloquial Phrases (일상 관용구 및 구어체): 예) call it a day, get cold feet, spill the beans, hit the ground running, stand someone up, cut corners
 
-[중요 추출 및 생성 규칙]
-- **동사원형(기본형) 규칙**: `expression` 필드에는 시제(과거형, 분사형 등)나 3인칭 단수형(-s)을 모두 제거하고, 반드시 **원형(동사원형/기본형, e.g., 'keep secret', 'double down on')**으로만 표기하세요.
-- **교과서 외 실전 표현**: 한국 교과서나 수능 시험에서 외우는 평이한 단어 단독 사용은 배제하고, 실생활 및 미드(드라마/영화)에서 자주 쓰이지만 한국인들이 놓치기 쉬운 표현들을 선별하세요.
-- **출처(Source) 매핑**: 텍스트 소스에 매칭되는 경우 해당 소스명(예: CNBC, BBC_Business, Friends 등)을 기록하되, 생성 및 기여의 원천이 되는 소스를 적어주세요.
+[★ 엄격한 추출 및 생성 규칙 (위반 시 실패)]
+1. **무조건 동사원형(기본형) 표기**:
+   - `expression` 필드에는 시제(과거형, 분사형, 진행형 등), 수 일치(3인칭 단수 -s), 인칭 대명사의 변형을 모두 배제한 **가장 기본적인 원형(동사원형/기본형)**으로만 기록하세요.
+   - (올바른 예) `get cold feet` (X: got cold feet), `keep someone in the loop` (X: kept him in the loop), `double down on` (X: doubled down on), `rule out` (X: ruled out)
+2. **단순 어휘 및 단순 명사구 금지**:
+   - 단순 어휘나 일반 명사, 시사 용어(예: oil prices, district court, train fares, pricing pressure, industrial profits, under-18s)는 학습 가치가 없으므로 절대 제외하세요.
+   - 단순 형용사구(예: be infertile, be drunk) 역시 제외하세요.
+3. **기초/초급 영어 표현 금지**:
+   - 중급 이상 학습자 대상이므로 지나치게 쉽거나 뻔한 표현(예: wake up, make noise, tell the truth, care about, go out, be worried about)은 제외하고, 실전 원어민 느낌이 물씬 나는 표현으로 큐레이션하세요.
+4. **문장 파편/임의 대사 금지**:
+   - `expression` 필드에는 관용구나 연어 자체만 들어가야 합니다. 문장 형태(예: guess someone is right, cow got through, there's nothing wrong with)는 절대 피하세요.
 
 반드시 아래 JSON 배열 형식으로만 응답하세요. 백틱(`) 기호나 markdown json 블록을 쓰지 말고 순수한 JSON 텍스트로만 응답하세요:
 [
   {{
-    "expression": "기본형(동사원형) 형태의 영어 표현",
+    "expression": "기본형(동사원형) 형태의 영어 표현 (e.g. touch base)",
     "pos": "phrasal verb / collocation / idiom",
     "ipa": "/정확한 IPA 발음 기호/",
     "meaning_kr": "한국어로 번역된 실제 맥락에서의 자연스러운 의미 (사전적 직역 금지)",
-    "original_text": "원문 텍스트에 나타난 표현 혹은 원문의 영감을 받아 자연스럽게 재구성한 미드/대화 속 문장",
+    "original_text": "제시된 텍스트의 맥락을 바탕으로 재구성하거나, 미드/일상/비즈니스 대화에서 이 표현이 쓰일 만한 지극히 자연스러운 원어민 구어체 상황의 문장",
     "applied_example": "이 표현을 일상 대화나 비즈니스에서 바로 사용할 수 있는 새로운 실전 예문",
     "source": "CNBC / BBC_Business / HBR / Friends 중 연관된 출처 명칭"
   }}
@@ -48,34 +55,39 @@ def _build_extraction_prompt(text_chunk: str, target_count: int) -> str:
 
 def _build_backfill_prompt(text_chunk: str, target_count: int, avoid_expressions: list[str]) -> str:
     avoid_str = ", ".join(avoid_expressions[:50])
-    prompt = f"""당신은 한국인을 위한 영어 네이티브 표현 교육 전문가입니다.
+    prompt = f"""당신은 한국인을 위한 영어 네이티브 표현 교육 전문가이자 최고의 큐레이터입니다.
 
-아래 영어 텍스트를 기반으로, 비원어민이 실전에서 꼭 알아야 할 실전 영어 표현을 추가로 {target_count}개 더 생성 및 추출하세요.
-단, 아래 기존에 추출된 표현들은 중복되므로 **절대 제외**하고 새로운 표현들로만 추출해야 합니다.
+제시된 [텍스트]를 참고하여, 아래 기존에 추출된 표현들과 겹치지 않는 새로운 영어 네이티브 표현을 정확히 {target_count}개 더 생성하여 엄선해 주세요.
 
 [제외할 기존 표현 목록]
 {avoid_str}
 
 [대상 표현 유형]
-1. Phrasal Verbs (구동사): 예) pull off, bring up
-2. Daily/Business Collocations (실전 연어): 예) raise concerns, make a difference
-3. Daily Idioms & Colloquial Phrases (일상 관용구 및 구어체): 예) call it a day, speak of the devil
+1. Phrasal Verbs (구동사): 예) double down on, pull off, pencil in, wear off
+2. Daily/Business Collocations (실전 연어): 예) touch base, circle back, hit a snag, take the hit
+3. Daily Idioms & Colloquial Phrases (일상 관용구 및 구어체): 예) call it a day, get cold feet, spill the beans, hit the ground running
 
-[중요 추출 및 생성 규칙]
-- **동사원형(기본형) 규칙**: `expression` 필드에는 반드시 시제를 제외한 **원형(동사원형/기본형, e.g., 'keep secret', 'double down on')**으로만 표기하세요.
-- **교과서 외 실전 표현**: 교과서용 기초 단어를 피하고, 실제 생활이나 미드 대화에서 자주 쓰이는 유용한 표현을 선별하세요.
-- **출처(Source) 매핑**: CNBC / BBC_Business / HBR / Friends 중 연관된 출처 명칭을 정확히 기입하세요.
+[★ 엄격한 추출 및 생성 규칙 (위반 시 실패)]
+1. **무조건 동사원형(기본형) 표기**:
+   - `expression` 필드에는 시제, 수 일치, 인칭 대명사의 변형을 모두 배제한 **가장 기본적인 원형(동사원형/기본형)**으로만 기록하세요.
+   - (올바른 예) `get cold feet` (X: got cold feet), `keep someone in the loop` (X: kept him in the loop), `double down on` (X: doubled down on)
+2. **단순 어휘 및 단순 명사구 금지**:
+   - 일반 명사, 시사 용어(예: oil prices, district court, train fares, pricing pressure, industrial profits, under-18s)는 절대 제외하세요.
+3. **기초/초급 영어 표현 금지**:
+   - 지나치게 쉽거나 뻔한 표현(예: wake up, make noise, tell the truth, care about)은 제외하고, 실전 원어민 느낌이 물씬 나는 표현으로 큐레이션하세요.
+4. **문장 파편/임의 대사 금지**:
+   - `expression` 필드에는 관용구나 연어 자체만 들어가야 합니다. 문장 형태(예: guess someone is right, cow got through)는 절대 피하세요.
 
 반드시 아래 JSON 배열 형식으로만 응답하세요. 백틱 기호나 markdown 블록을 쓰지 마세요:
 [
   {{
-    "expression": "기본형(동사원형) 형태의 영어 표현",
+    "expression": "기본형(동사원형) 형태의 영어 표현 (e.g. touch base)",
     "pos": "phrasal verb / collocation / idiom",
     "ipa": "/정확한 IPA 발음 기호/",
-    "meaning_kr": "한국어 의미",
-    "original_text": "원문 문장 또는 원문을 기반으로 재구성한 구어체 문장",
+    "meaning_kr": "한국어로 번역된 실제 맥락에서의 자연스러운 의미",
+    "original_text": "이 표현이 자연스럽게 쓰일 만한 구어체/비즈니스 대화 상황의 문장",
     "applied_example": "새로운 맥락의 실전 예문",
-    "source": "원문 텍스트의 SOURCE 명칭"
+    "source": "CNBC / BBC_Business / HBR / Friends 중 연관된 출처 명칭"
   }}
 ]
 
