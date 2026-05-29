@@ -30,6 +30,7 @@ jobs:
       - name: Run expression pipeline
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_USER_CREDENTIALS: ${{ secrets.GOOGLE_USER_CREDENTIALS }}
         run: python main.py
       
       - name: Commit updated index, log, and Excel DB
