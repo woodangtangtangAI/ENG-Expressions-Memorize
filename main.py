@@ -79,6 +79,25 @@ def main() -> None:
             )
             sys.exit(0)
 
+        # ── Step 0b: Skip if already ran today (backup cron guard) ────
+        today_str = datetime.date.today().isoformat()
+        if os.path.exists(config.RUN_LOG_FILE):
+            with open(config.RUN_LOG_FILE, "r", encoding="utf-8") as f:
+                try:
+                    log_data = json.load(f)
+                except (json.JSONDecodeError, ValueError):
+                    log_data = []
+            today_runs = [
+                r for r in log_data
+                if r.get("date") == today_str and r.get("status") == "success"
+            ]
+            if today_runs:
+                logger.info(
+                    f"[SKIP] Already ran successfully today ({today_str}). "
+                    f"This is likely the backup cron trigger. Exiting."
+                )
+                sys.exit(0)
+
         logger.info(
             f"📊 Progress: {current_count}/{config.MAX_EXPRESSIONS} "
             f"expressions collected so far"
