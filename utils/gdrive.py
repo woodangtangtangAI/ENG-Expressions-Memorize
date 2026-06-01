@@ -16,7 +16,7 @@ FOLDER_IDS = {
 }
 
 def get_drive_service():
-    """Build Google Drive API client using service account credentials from env."""
+    """Build Google Drive API client using credentials from env (supports both SA and OAuth)."""
     creds_json = os.environ.get("GOOGLE_USER_CREDENTIALS")
     if not creds_json:
         logger.warning("GOOGLE_USER_CREDENTIALS environment variable not found. Skipping Google Drive sync.")
@@ -25,7 +25,23 @@ def get_drive_service():
     try:
         creds_data = json.loads(creds_json)
         scopes = ['https://www.googleapis.com/auth/drive']
-        creds = Credentials.from_service_account_info(creds_data, scopes=scopes)
+        
+        if "refresh_token" in creds_data:
+            from google.oauth2.credentials import Credentials
+            creds = Credentials(
+                token=creds_data.get('token'),
+                refresh_token=creds_data.get('refresh_token'),
+                token_uri=creds_data.get('token_uri', 'https://oauth2.googleapis.com/token'),
+                client_id=creds_data.get('client_id'),
+                client_secret=creds_data.get('client_secret'),
+                scopes=scopes
+            )
+            logger.info("🔐 Loaded OAuth user credentials for Google Drive sync.")
+        else:
+            from google.oauth2.service_account import Credentials as SACredentials
+            creds = SACredentials.from_service_account_info(creds_data, scopes=scopes)
+            logger.info("🔑 Loaded Service Account credentials for Google Drive sync.")
+            
         return build('drive', 'v3', credentials=creds)
     except Exception as e:
         logger.error(f"Failed to initialize Google Drive service: {e}")
