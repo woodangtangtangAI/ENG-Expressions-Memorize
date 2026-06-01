@@ -68,5 +68,12 @@
     "total_count": 928,
     "sources_scraped": 4,
     "status": "success"
+  },
+  {
+    "date": "2026-06-01",
+    "expressions_added": 73,
+    "total_count": 1001,
+    "sources_scraped": 4,
+    "status": "success"
   }
 ]
