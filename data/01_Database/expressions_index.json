@@ -1,5 +1,5 @@
 {
-  "total_count": 1683,
+  "total_count": 1723,
   "expressions": [
     "pushes towards",
     "kept secret",
@@ -1683,7 +1683,47 @@
     "sound the alarm",
     "run into a brick wall",
     "be on the line",
-    "fall flat"
+    "fall flat",
+    "due out",
+    "capitalize on",
+    "tap into",
+    "cause a stir",
+    "no show",
+    "keep someone on side",
+    "hook up",
+    "make out",
+    "live it up",
+    "let something go",
+    "get off the ground",
+    "pull your weight",
+    "in the long run",
+    "think on your feet",
+    "up to speed",
+    "jump the gun",
+    "sit on the fence",
+    "get into gear",
+    "show the ropes",
+    "take for granted",
+    "give the go-ahead",
+    "keep in mind",
+    "see the light",
+    "at the eleventh hour",
+    "throw out an idea",
+    "go out of your way",
+    "keep in touch",
+    "get the message",
+    "have a head for",
+    "in the dark",
+    "hold your ground",
+    "give a hand",
+    "get out of my sight",
+    "put your foot in your mouth",
+    "see the big picture",
+    "at your word",
+    "go bust",
+    "think big",
+    "show one's true colors",
+    "corner the market"
   ],
   "daily_uid_counter": {
     "2026-05-27": 558,
@@ -1698,7 +1738,8 @@
     "2026-06-06": 93,
     "2026-06-07": 71,
     "2026-06-08": 92,
-    "2026-06-09": 59
+    "2026-06-09": 59,
+    "2026-06-10": 40
   },
   "used_episodes": [
     "https://fangj.github.io/friends/season/0103.html",
@@ -1715,7 +1756,8 @@
     "https://fangj.github.io/friends/season/0420.html",
     "https://fangj.github.io/friends/season/0702.html",
     "https://fangj.github.io/friends/season/0704.html",
-    "https://fangj.github.io/friends/season/0124.html"
+    "https://fangj.github.io/friends/season/0124.html",
+    "https://fangj.github.io/friends/season/0716.html"
   ],
-  "last_updated": "2026-06-09T10:42:25.105992"
+  "last_updated": "2026-06-10T11:04:15.684033"
 }
