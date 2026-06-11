@@ -1,5 +1,5 @@
 {
-  "total_count": 1723,
+  "total_count": 1757,
   "expressions": [
     "pushes towards",
     "kept secret",
@@ -1723,7 +1723,41 @@
     "go bust",
     "think big",
     "show one's true colors",
-    "corner the market"
+    "corner the market",
+    "beat on",
+    "raise capital",
+    "market debut",
+    "bear market",
+    "downplay the threat",
+    "ailing fortunes",
+    "sticker price",
+    "drive a surge",
+    "veto a deal",
+    "get into",
+    "money in the bank",
+    "stock up",
+    "be on a break",
+    "be one to talk",
+    "run by",
+    "put in place",
+    "hit the mark",
+    "get under someone's skin",
+    "speak one's mind",
+    "cut through the noise",
+    "stay the course",
+    "move the needle",
+    "have a leg up",
+    "clear the way",
+    "have a heart of gold",
+    "beat the clock",
+    "cut it close",
+    "speak for itself",
+    "catch up with",
+    "take stock of",
+    "get into the swing of things",
+    "set in stone",
+    "stand on one's own two feet",
+    "be worth one's salt"
   ],
   "daily_uid_counter": {
     "2026-05-27": 558,
@@ -1739,7 +1773,8 @@
     "2026-06-07": 71,
     "2026-06-08": 92,
     "2026-06-09": 59,
-    "2026-06-10": 40
+    "2026-06-10": 40,
+    "2026-06-11": 34
   },
   "used_episodes": [
     "https://fangj.github.io/friends/season/0103.html",
@@ -1757,7 +1792,8 @@
     "https://fangj.github.io/friends/season/0702.html",
     "https://fangj.github.io/friends/season/0704.html",
     "https://fangj.github.io/friends/season/0124.html",
-    "https://fangj.github.io/friends/season/0716.html"
+    "https://fangj.github.io/friends/season/0716.html",
+    "https://fangj.github.io/friends/season/0317.html"
   ],
-  "last_updated": "2026-06-10T11:04:15.684033"
+  "last_updated": "2026-06-11T11:32:56.741172"
 }
