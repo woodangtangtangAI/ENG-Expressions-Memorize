@@ -1,4 +1,4 @@
-import json
+﻿import json
 import time
 import re
 from google import genai
@@ -102,7 +102,7 @@ def _call_gemini(prompt: str) -> list[dict]:
     """
     # List of models to try in order
     models_to_try = [
-        "gemini-2.5-flash",
+        "gemini-flash-latest",
         "gemini-3.5-flash",
         "gemini-flash-latest",
         "gemini-3.1-flash-lite",
